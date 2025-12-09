@@ -10,8 +10,8 @@ from fpdf import FPDF
 load_dotenv()
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'outputs'
+UPLOAD_FOLDER = '/tmp/uploads'
+OUTPUT_FOLDER = '/tmp/outputs'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
@@ -23,7 +23,16 @@ llm = ChatGroq(
     temperature=0.1,
     api_key=GROQ_API_KEY
 )
-
+def cleanup_old_files():
+    try:
+        now = time.time()
+        for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER]:
+            for f in os.listdir(folder):
+                f_path = os.path.join(folder, f)
+                if os.stat(f_path).st_mtime < now - 600: 
+                    os.remove(f_path)
+    except Exception as e:
+        print(f"Cleanup Error: {e}")
 
 def optimize_image(image_path, max_size_kb=200):
     file_size = os.path.getsize(image_path) / 1024
@@ -95,6 +104,8 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
+    cleanup_old_files() 
+
     if 'file' not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
     
@@ -108,10 +119,10 @@ def analyze():
 
     try:
         final_path = optimize_image(filepath)
-
         raw_text = get_ocr_text(final_path)
+        
         if not raw_text:
-            return jsonify({"error": "Could not read text from image. It might be too blurry."}), 400
+            return jsonify({"error": "Could not read text. Image might be blurry or not a medical report."}), 400
 
         prompt = f"""
         You are a Medical Report Interpretation AI. You will analyze ANY type of medical document (blood test, scan report, radiology, ECG, discharge summary, PCR, microbiology, biopsy, or any hospital report) and produce two sections:
