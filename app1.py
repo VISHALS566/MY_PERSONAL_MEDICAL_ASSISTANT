@@ -34,6 +34,19 @@ def cleanup_old_files():
     except Exception as e:
         print(f"Cleanup Error: {e}")
 
+@app.route('/health')
+def health_check():
+    ocr_key = os.getenv("API_NINJAS_KEY")
+    llm_key = os.getenv("GROQ_API_KEY")
+    
+    status = {
+        "status": "online",
+        "ocr_key_present": bool(ocr_key),
+        "llm_key_present": bool(llm_key),
+        "upload_folder_exists": os.path.exists(UPLOAD_FOLDER)
+    }
+    return jsonify(status)
+
 def optimize_image(image_path, max_size_kb=200):
     file_size = os.path.getsize(image_path) / 1024
     
