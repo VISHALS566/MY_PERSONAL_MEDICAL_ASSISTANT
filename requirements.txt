@@ -1,0 +1,7 @@
+flask
+python-dotenv
+Pillow
+requests
+langchain-groq
+fpdf
+gunicorn
